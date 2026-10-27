@@ -43,3 +43,37 @@ export interface TaskTransitionResponse {
     history: TaskHistory;
   };
 }
+
+export interface TaskProposalCreatedEvent {
+  proposalId: string;
+  taskId: string;
+  userId: string;
+  type: ProposalType;
+  reason: string;
+}
+
+export interface TaskProposalApprovedEvent {
+  proposalId: string;
+  taskId: string;
+  type: ProposalType;
+  reviewerId: string;
+  taskStatus: TaskStatus;
+}
+
+export interface TaskProposalRejectedEvent {
+  proposalId: string;
+  taskId: string;
+  type: ProposalType;
+  reviewerId: string;
+  reviewReason: string;
+}
+
+export interface TaskProposalResponse {
+  proposal: TaskProposal;
+}
+
+export interface TaskProposalReviewResponse {
+  proposal: TaskProposal;
+  task: Task;
+}
+

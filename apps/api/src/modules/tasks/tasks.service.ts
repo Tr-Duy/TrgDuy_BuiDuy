@@ -1,18 +1,18 @@
-import {
-  Injectable,
-  BadRequestException,
-  HttpException,
-  HttpStatus,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, BadRequestException, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../database';
-import { CreateTaskDto } from './dto/create-task.dto';
-import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
+import { CreateTaskDto, UpdateTaskStatusDto, CreateTaskProposalDto, RejectTaskProposalDto } from './dto';
 import { TaskStateMachine } from './task-state.machine';
 import { TaskStatus } from './tasks.types';
 import { TASK_ERROR_CODES, TASK_EVENT_STATUS_CHANGED } from './tasks.constants';
-import type { Task, TaskHistory, TaskStatusTransitionPayload } from './tasks.types';
+import { TaskProposalsService } from './task-proposals.service';
+import type {
+  Task,
+  TaskHistory,
+  TaskStatusTransitionPayload,
+  TaskProposalResponse,
+  TaskProposalReviewResponse,
+} from './tasks.types';
 import type { JwtPayload, UserRole } from '../platform/types/identity.types';
 
 @Injectable()
@@ -22,6 +22,7 @@ export class TasksService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly taskProposalsService: TaskProposalsService,
   ) {}
 
   async create(createdById: string, dto: CreateTaskDto): Promise<Task> {
@@ -113,14 +114,36 @@ export class TasksService {
     return this.findTaskOrThrow(taskId);
   }
 
+  async createProposal(
+    taskId: string,
+    user: JwtPayload,
+    dto: CreateTaskProposalDto,
+  ): Promise<TaskProposalResponse> {
+    return this.taskProposalsService.create(taskId, user, dto);
+  }
+
+  async approveProposal(
+    taskId: string,
+    proposalId: string,
+    user: JwtPayload,
+  ): Promise<TaskProposalReviewResponse> {
+    return this.taskProposalsService.approve(taskId, proposalId, user);
+  }
+
+  async rejectProposal(
+    taskId: string,
+    proposalId: string,
+    user: JwtPayload,
+    dto: RejectTaskProposalDto,
+  ): Promise<TaskProposalReviewResponse> {
+    return this.taskProposalsService.reject(taskId, proposalId, user, dto);
+  }
+
   private async findTaskOrThrow(taskId: string): Promise<Task> {
     const task = await this.prisma.task.findUnique({ where: { id: taskId } });
     if (!task) {
       throw new HttpException(
-        {
-          errorCode: TASK_ERROR_CODES.TSK_NOT_FOUND,
-          message: 'Task không tồn tại.',
-        },
+        { errorCode: TASK_ERROR_CODES.TSK_NOT_FOUND, message: 'Task không tồn tại.' },
         HttpStatus.NOT_FOUND,
       );
     }
@@ -134,11 +157,7 @@ export class TasksService {
     dto: UpdateTaskStatusDto,
   ): Promise<{ task: Task; history: TaskHistory }> {
     return this.prisma.$transaction(async (tx) => {
-      const task = await tx.task.update({
-        where: { id: currentTask.id },
-        data: updates,
-      });
-
+      const task = await tx.task.update({ where: { id: currentTask.id }, data: updates });
       const history = await tx.taskHistory.create({
         data: {
           taskId: currentTask.id,
@@ -149,7 +168,6 @@ export class TasksService {
           reason: dto.reason ?? null,
         },
       });
-
       return { task, history };
     });
   }

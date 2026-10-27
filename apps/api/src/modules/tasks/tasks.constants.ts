@@ -5,8 +5,15 @@ export const TASK_ERROR_CODES = {
   REASON_REQUIRED: 'REASON_REQUIRED',
   TSK_DEADLINE_REQUIRED: 'TSK_DEADLINE_REQUIRED',
   TSK_NOT_FOUND: 'TSK_NOT_FOUND',
+  TSK_PROPOSAL_PENDING: 'TSK_PROPOSAL_PENDING',
+  PROPOSAL_NOT_FOUND: 'PROPOSAL_NOT_FOUND',
+  PROPOSAL_ALREADY_REVIEWED: 'PROPOSAL_ALREADY_REVIEWED',
 } as const;
 
 export type TaskErrorCode = (typeof TASK_ERROR_CODES)[keyof typeof TASK_ERROR_CODES];
 
 export const TASK_EVENT_STATUS_CHANGED = 'task.status_changed';
+export const TASK_EVENT_PROPOSAL_CREATED = 'task.proposal_created';
+export const TASK_EVENT_PROPOSAL_APPROVED = 'task.proposal_approved';
+export const TASK_EVENT_PROPOSAL_REJECTED = 'task.proposal_rejected';
+

@@ -11,12 +11,22 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { TasksService } from './tasks.service';
-import { CreateTaskDto } from './dto/create-task.dto';
-import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
+import {
+  CreateTaskDto,
+  UpdateTaskStatusDto,
+  CreateTaskProposalDto,
+  RejectTaskProposalDto,
+} from './dto';
 import { JwtAuthGuard } from '../platform/guards/jwt-auth.guard';
 import { CurrentUser } from '../platform/decorators/current-user.decorator';
 import type { JwtPayload } from '../platform/types/identity.types';
-import type { Task, TaskStatus, TaskTransitionResponse } from './tasks.types';
+import type {
+  Task,
+  TaskStatus,
+  TaskTransitionResponse,
+  TaskProposalResponse,
+  TaskProposalReviewResponse,
+} from './tasks.types';
 
 @Controller(['tasks', 'api/v1/tasks'])
 @UseGuards(JwtAuthGuard)
@@ -58,4 +68,36 @@ export class TasksController {
       data: result,
     };
   }
+
+  @Post(':id/proposals')
+  @HttpCode(HttpStatus.CREATED)
+  async createProposal(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: CreateTaskProposalDto,
+  ): Promise<TaskProposalResponse> {
+    return this.tasksService.createProposal(id, user, dto);
+  }
+
+  @Patch(':id/proposals/:proposalId/approve')
+  @HttpCode(HttpStatus.OK)
+  async approveProposal(
+    @Param('id') id: string,
+    @Param('proposalId') proposalId: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<TaskProposalReviewResponse> {
+    return this.tasksService.approveProposal(id, proposalId, user);
+  }
+
+  @Patch(':id/proposals/:proposalId/reject')
+  @HttpCode(HttpStatus.OK)
+  async rejectProposal(
+    @Param('id') id: string,
+    @Param('proposalId') proposalId: string,
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: RejectTaskProposalDto,
+  ): Promise<TaskProposalReviewResponse> {
+    return this.tasksService.rejectProposal(id, proposalId, user, dto);
+  }
 }
+

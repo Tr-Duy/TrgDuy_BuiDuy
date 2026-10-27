@@ -4,19 +4,20 @@
 // ============================================================
 
 model Task {
-  id             String         @id @default(uuid())
-  title          String         @db.VarChar(150)
-  description    String?        @db.Text
-  assigneeId     String         @map("assignee_id")
-  creatorId      String         @map("creator_id")
-  deadline       DateTime
-  status         TaskStatus     @default(todo)
-  previousStatus TaskStatus?    @map("previous_status")
-  progress       Int            @default(0)
-  priority       String         @default("medium")
-  needsReassign  Boolean        @default(false) @map("needs_reassign")
-  createdAt      DateTime       @default(now()) @map("created_at")
-  updatedAt      DateTime       @updatedAt @map("updated_at")
+  id                 String         @id @default(uuid())
+  title              String         @db.VarChar(150)
+  description        String?        @db.Text
+  assigneeId         String         @map("assignee_id")
+  creatorId          String         @map("creator_id")
+  deadline           DateTime
+  status             TaskStatus     @default(todo)
+  previousStatus     TaskStatus?    @map("previous_status")
+  progress           Int            @default(0)
+  priority           String         @default("medium")
+  needsReassign      Boolean        @default(false) @map("needs_reassign")
+  hasPendingProposal Boolean        @default(false) @map("has_pending_proposal")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
 
   assignee  User          @relation("TaskAssignee", fields: [assigneeId], references: [id])
   createdBy User          @relation("TaskCreator", fields: [creatorId], references: [id])
@@ -65,20 +66,19 @@ model TaskLog {
 }
 
 model TaskProposal {
-  id               String         @id @default(uuid())
-  taskId           String         @map("task_id")
-  type             ProposalType
-  status           ProposalStatus @default(PENDING)
-  reason           String
-  proposedDeadline DateTime?      @map("proposed_deadline")
-  proposedById     String         @map("proposed_by_id")
-  reviewedById     String?        @map("reviewed_by_id")
-  rejectionReason  String?        @map("rejection_reason")
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @updatedAt @map("updated_at")
+  id           String         @id @default(uuid())
+  taskId       String         @map("task_id")
+  userId       String         @map("user_id")
+  type         ProposalType
+  status       ProposalStatus @default(PENDING)
+  reason       String         @db.Text
+  reviewReason String?        @map("review_reason") @db.Text
+  reviewerId   String?        @map("reviewer_id")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  reviewedAt   DateTime?      @map("reviewed_at")
 
-  task       Task @relation(fields: [taskId], references: [id])
-  proposedBy User @relation(fields: [proposedById], references: [id])
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
 
   @@map("task_proposals")
   @@index([taskId])
@@ -111,9 +111,8 @@ enum TaskStatus {
 }
 
 enum ProposalType {
-  PAUSE
-  CANCEL
-  CHANGE_DEADLINE
+  postpone
+  cancel
 }
 
 enum ProposalStatus {
