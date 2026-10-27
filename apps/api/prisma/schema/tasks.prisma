@@ -4,33 +4,52 @@
 // ============================================================
 
 model Task {
-  id                String             @id @default(cuid())
-  title             String
-  description       String?
-  status            TaskStatus         @default(TODO)
-  deadlineStatus    TaskDeadlineStatus @default(NORMAL) @map("deadline_status")
-  deadline          DateTime
-  assigneeId        String             @map("assignee_id")
-  createdById       String             @map("created_by_id")
-  needsReassignment Boolean            @default(false) @map("needs_reassignment")
-  createdAt         DateTime           @default(now()) @map("created_at")
-  updatedAt         DateTime           @updatedAt @map("updated_at")
+  id             String         @id @default(uuid())
+  title          String         @db.VarChar(150)
+  description    String?        @db.Text
+  assigneeId     String         @map("assignee_id")
+  creatorId      String         @map("creator_id")
+  deadline       DateTime
+  status         TaskStatus     @default(todo)
+  previousStatus TaskStatus?    @map("previous_status")
+  progress       Int            @default(0)
+  priority       String         @default("medium")
+  needsReassign  Boolean        @default(false) @map("needs_reassign")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
 
-  assignee   User           @relation("TaskAssignee", fields: [assigneeId], references: [id])
-  createdBy  User           @relation("TaskCreator", fields: [createdById], references: [id])
-  logs       TaskLog[]
-  proposals  TaskProposal[]
-  comments   TaskComment[]
+  assignee  User          @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  createdBy User          @relation("TaskCreator", fields: [creatorId], references: [id])
+  histories TaskHistory[]
+  logs      TaskLog[]
+  proposals TaskProposal[]
+  comments  TaskComment[]
 
   @@map("tasks")
   @@index([assigneeId])
   @@index([status])
   @@index([deadline])
-  @@index([deadlineStatus])
+}
+
+model TaskHistory {
+  id        String   @id @default(uuid())
+  taskId    String   @map("task_id")
+  actorId   String   @map("actor_id")
+  type      String   @default("STATUS_CHANGE")
+  oldValue  String?  @map("old_value")
+  newValue  String   @map("new_value")
+  reason    String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("task_histories")
+  @@index([taskId])
+  @@index([actorId])
 }
 
 model TaskLog {
-  id          String     @id @default(cuid())
+  id          String     @id @default(uuid())
   taskId      String     @map("task_id")
   fromStatus  TaskStatus @map("from_status")
   toStatus    TaskStatus @map("to_status")
@@ -46,7 +65,7 @@ model TaskLog {
 }
 
 model TaskProposal {
-  id               String         @id @default(cuid())
+  id               String         @id @default(uuid())
   taskId           String         @map("task_id")
   type             ProposalType
   status           ProposalStatus @default(PENDING)
@@ -67,7 +86,7 @@ model TaskProposal {
 }
 
 model TaskComment {
-  id          String   @id @default(cuid())
+  id          String   @id @default(uuid())
   taskId      String   @map("task_id")
   authorId    String   @map("author_id")
   content     String
@@ -82,19 +101,13 @@ model TaskComment {
 }
 
 enum TaskStatus {
-  TODO
-  IN_PROGRESS
-  REVIEW
-  REWORK
-  DONE
-  PAUSED
-  CANCELLED
-}
-
-enum TaskDeadlineStatus {
-  NORMAL
-  WARNING
-  OVERDUE
+  todo
+  in_progress
+  in_review
+  rework
+  postponed
+  done
+  cancelled
 }
 
 enum ProposalType {
